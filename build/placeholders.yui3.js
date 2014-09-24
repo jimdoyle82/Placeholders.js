@@ -119,7 +119,7 @@
         classNameRegExp = new RegExp("(?:^|\\s)" + placeholderClassName + "(?!\\S)"),
 
         // These will hold references to all elements that can be affected. NodeList objects are live, so we only need to get those references once
-        inputs, textareas,
+        inputs, textareas, newInputs,
 
         // The various data-* attributes used by the polyfill
         ATTR_CURRENT_VAL = "data-placeholder-value",
@@ -130,6 +130,7 @@
         ATTR_OPTION_FOCUS = "data-placeholder-focus",
         ATTR_OPTION_LIVE = "data-placeholder-live",
         ATTR_MAXLENGTH = "data-placeholder-maxlength",
+        CLS_NO_PLACEHOLDER_FALLBACK = "no-placeholder-fallback",
 
         // Various other variables used throughout the rest of the script
         test = document.createElement("input"),
@@ -231,6 +232,7 @@
             // Run the callback for each element
             for (i = 0, len = handleInputsLength + handleTextareasLength; i < len; i++) {
                 elem = i < handleInputsLength ? handleInputs[i] : handleTextareas[i - handleInputsLength];
+
                 callback(elem);
             }
         }
@@ -384,28 +386,36 @@
         // Prepend new style element to the head (before any existing stylesheets, so user-defined rules take precedence)
         head.insertBefore(styleElem, head.firstChild);
 
+        newInputs = [];
         // Set up the placeholders
         for (i = 0, len = inputs.length + textareas.length; i < len; i++) {
             elem = i < inputs.length ? inputs[i] : textareas[i - inputs.length];
 
-            // Get the value of the placeholder attribute, if any. IE10 emulating IE7 fails with getAttribute, hence the use of the attributes node
-            placeholder = elem.attributes.placeholder;
-            if (placeholder) {
+            if (elem.className.indexOf(CLS_NO_PLACEHOLDER_FALLBACK) === -1) {
 
-                // IE returns an empty object instead of undefined if the attribute is not present
-                placeholder = placeholder.nodeValue;
+                // Get the value of the placeholder attribute, if any. IE10 emulating IE7 fails with getAttribute, hence the use of the attributes node
+                placeholder = elem.attributes.placeholder;
+                if (placeholder) {
 
-                // Only apply the polyfill if this element is of a type that supports placeholders, and has a placeholder attribute with a non-empty value
-                if (placeholder && Utils.inArray(validTypes, elem.type)) {
-                    newElement(elem);
+                    // IE returns an empty object instead of undefined if the attribute is not present
+                    placeholder = placeholder.nodeValue;
+
+                    // Only apply the polyfill if this element is of a type that supports placeholders, and has a placeholder attribute with a non-empty value
+                    if (placeholder && Utils.inArray(validTypes, elem.type)) {
+                        newElement(elem);
+                    }
                 }
+
+                newInputs.push(elem);
             }
         }
 
+        inputs = newInputs;
+
         // If enabled, the polyfill will repeatedly check for changed/added elements and apply to those as well
         timer = setInterval(function () {
-            for (i = 0, len = inputs.length + textareas.length; i < len; i++) {
-                elem = i < inputs.length ? inputs[i] : textareas[i - inputs.length];
+            for (i = 0, len = inputs.length; i < len; i++) {
+                elem = inputs[i];
 
                 // Only apply the polyfill if this element is of a type that supports placeholders, and has a placeholder attribute with a non-empty value
                 placeholder = elem.attributes.placeholder;
